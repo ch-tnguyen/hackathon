@@ -23,7 +23,7 @@ id_cluster_out = "/Users/alyssavance/hackathon/id_cluster.txt"
 
 output_dim_count = 200
 max_clusters = 20
-dim_downsample = 10
+dim_downsample = 5
 gmm_downsample = 1
 
 cost_col_list = {0, 1, 21, 29, 31, 33, 41, 43, 44, 45, 46, 47, 48, 49, 50, 51}
@@ -249,6 +249,7 @@ print("Loaded data from CSV")
 print("Splitting table into columns")
 zip_table = list(zip(*csv_data))
 person_id_map = make_person_map(zip_table)
+id_person_map = {v: k for k, v in person_id_map.items()}
 print("Generating column maps")
 col_maps = generate_col_maps(zip_table)
 triples = process_rows(csv_data, col_maps, person_id_map)
@@ -275,9 +276,9 @@ labels = vbgmm.predict(reduced_data)
 pickle_out(list(zip(truncated_data, labels)))
 print("Finished pickling")
 print("Writing person ID/cluster mappings")
-id_person_map = {v: k for k, v in person_id_map.items()}
 f = open(id_cluster_out, "w")
 for i in range(0, len(labels)):
-    f.write(str(id_person_map[i * dim_downsample]) + ": " + str(labels[i]) + "\n")
+    f.write(str(id_person_map[i * dim_downsample * gmm_downsample])
+            + ": " + str(labels[i]) + "\n")
 f.close()
 print("Finished")
