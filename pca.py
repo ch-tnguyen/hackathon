@@ -16,13 +16,14 @@ from sklearn.utils import check_array
 from sklearn.utils.graph import graph_shortest_path
 
 sql_database = '/Users/alyssavance/hackathon/metaTables.sqlite'
-csv_table = "/Users/alyssavance/hackathon/test_table.csv"
+csv_table = "/Users/alyssavance/hackathon/raw_table.csv"
 id_map_out = "/Users/alyssavance/hackathon/person_id_map.csv"
 pickle_2d_out = "/Users/alyssavance/hackathon/large_clusters.pickle"
+id_cluster_out = "/Users/alyssavance/hackathon/id_cluster.txt"
 
-output_dim_count = 2
-max_clusters = 2
-dim_downsample = 1
+output_dim_count = 200
+max_clusters = 20
+dim_downsample = 10
 gmm_downsample = 1
 
 cost_col_list = {0, 1, 21, 29, 31, 33, 41, 43, 44, 45, 46, 47, 48, 49, 50, 51}
@@ -161,14 +162,11 @@ def process_row(triple_dict, col_maps, rownum, row):
             except ValueError:
                 pass
             col_count += 1
-            
-def process_rows(csv_table):
-    print("Splitting table into columns")
-    zip_table = list(zip(*csv_table))
-    print("Generating column maps")
-    col_maps = generate_col_maps(zip_table)
-    person_id_map = count_col(zip_table[person_id_col])
 
+def make_person_map(zip_table):
+    return count_col(zip_table[person_id_col])
+            
+def process_rows(csv_table, col_maps, person_id_map):
     with open(id_map_out, 'w') as csvfile:
         writer = csv.writer(csvfile)
         for k in person_id_map:
@@ -248,7 +246,12 @@ def pickle_out(matrix):
 print("Starting program")
 csv_data = csv_reader(csv_table)
 print("Loaded data from CSV")
-triples = process_rows(csv_data)
+print("Splitting table into columns")
+zip_table = list(zip(*csv_data))
+person_id_map = make_person_map(zip_table)
+print("Generating column maps")
+col_maps = generate_col_maps(zip_table)
+triples = process_rows(csv_data, col_maps, person_id_map)
 print("Building matrix")
 matrix = build_sparse_matrix(triples)
 #print("Number of people is:")
@@ -266,7 +269,15 @@ print("Distribution of cluster weights:")
 w = vbgmm.weights_
 w.sort()
 print(w)
+print("Fitting TSNE for visualization")
 truncated_data = fit_tsne(reduced_data)
 labels = vbgmm.predict(reduced_data)
 pickle_out(list(zip(truncated_data, labels)))
 print("Finished pickling")
+print("Writing person ID/cluster mappings")
+id_person_map = {v: k for k, v in person_id_map.items()}
+f = open(id_cluster_out, "w")
+for i in range(0, len(labels)):
+    f.write(str(id_person_map[i * dim_downsample]) + ": " + str(labels[i]) + "\n")
+f.close()
+print("Finished")
